@@ -4,28 +4,29 @@
 #include <cmath>
 #include <ctime>
 #include <map>
+#define eps 1e-8
+#define zero(x) (((x)>0?(x):-(x))<eps)
 using namespace std;
 int c;
 class point {
 private:
     double x, y;
-    bool operator < (const point& p)const
-    {
-        if (x == p.x) return y < p.y;
-        return x < p.x;
-    }
 
 public:
+    point(): x(0),y(0){}
     point(double x, double y) {
         this->x = x;
         this->y = y;
     }
     double getx() { return x; }
     double gety() { return y; }
+    void setx(double x) { this->x = x; }
+    void sety(double y) { this->y = y; }
     double countdistance(point p) {
         return sqrt((x - p.getx()) * (x - p.getx()) + (y - p.gety()) * (y - p.gety()));
     }
 };
+point p[100005], convex[100005];
 vector <point> s;
  
 class node {
@@ -47,6 +48,84 @@ public:
     }
 }*trie;
 
+double xmult(point p1, point p2, point p0)
+{
+    return (p1.getx() - p0.getx()) * (p2.gety() - p0.gety()) - (p2.getx() - p0.getx()) * (p1.gety() - p0.gety());
+}
+
+int dist2(point a, point b)
+{
+    return (a.getx() - b.getx()) * (a.getx() - b.getx()) + (a.gety() - b.gety()) * (a.gety() - b.gety());
+}
+
+
+int graham_cp(const void* a, const void* b) {
+    point p1, p2;
+    double ret = xmult(*((point*)a), *((point*)b), p1);
+    return zero(ret) ? (xmult(*((point*)a), *((point*)b), p2) > 0 ? 1 : -1) : (ret > 0 ? 1 : -1);
+}
+void _graham(int n, point* p, int& s, point* ch) {
+    int i, k = 0;
+    point p1, p2;
+    for (p1 = p2 = p[0], i = 1; i < n; p2.setx(p2.getx() + p[i].getx()), p2.sety(p2.gety() + p[i].gety()), i++)
+        if (p1.gety() - p[i].gety() > eps || (zero(p1.gety() - p[i].gety()) && p1.getx() > p[i].getx()))
+            p1 = p[k = i];
+    p2.setx(p2.getx() / n), p2.setx(p2.gety() / n);
+    p[k] = p[0], p[0] = p1;
+    qsort(p + 1, n - 1, sizeof(point), graham_cp);
+    for (ch[0] = p[0], ch[1] = p[1], ch[2] = p[2], s = i = 3; i < n; ch[s++] = p[i++])
+        for (; s > 2 && xmult(ch[s - 2], p[i], ch[s - 1]) < -eps; s--);
+}
+
+int wipesame_cp(const void* a, const void* b)
+{
+    if ((*(point*)a).gety() < (*(point*)b).gety() - eps) return -1;
+    else if ((*(point*)a).gety() > (*(point*)b).gety() + eps) return 1;
+    else if ((*(point*)a).getx() < (*(point*)b).getx() - eps) return -1;
+    else if ((*(point*)a).getx() > (*(point*)b).getx() + eps) return 1;
+    else return 0;
+}
+
+int _wipesame(point* p, int n)
+{
+    int i, k;
+    qsort(p, n, sizeof(point), wipesame_cp);
+    for (k = i = 1; i < n; i++)
+        if (wipesame_cp(p + i, p + i - 1) != 0) p[k++] = p[i];
+    return k;
+}
+
+int graham(int n, point* p, point* convex, int maxsize = 1, int dir = 1) {
+    point* temp = new point[n];
+    int s, i;
+    n = _wipesame(p, n);
+    _graham(n, p, s, temp);
+    for (convex[0] = temp[0], n = 1, i = (dir ? 1 : (s - 1)); dir ? (i < s) : i; i += (dir ? 1 : -1))
+        if (maxsize || !zero(xmult(temp[i - 1], temp[i], temp[(i + 1) % s])))
+            convex[n++] = temp[i];
+    delete[]temp;
+    return n;
+}
+
+int rotating_calipers(point* ch, int n)
+{
+    int q = 1, ans = 0;
+    ch[n] = ch[0];
+    for (int p = 0; p < n; p++)
+    {
+        while (xmult(ch[p + 1], ch[q + 1], ch[p]) > xmult(ch[p + 1], ch[q], ch[p]))
+            q = (q + 1) % n;
+        ans = max(ans, max(dist2(ch[p], ch[q]), dist2(ch[p + 1], ch[q + 1])));
+    }
+    return ans;
+}
+
+double Find_mostfar() {
+    int n = s.size();
+    for (int i = 0; i < n; i++) p[i].setx(s[i].getx()), p[i].sety(s[i].gety());
+    int size = graham(n, p, convex, 1, 0);
+    return sqrt(rotating_calipers(convex, size));
+}
 
 void addnode(node* f, double p, int depth)
 {
@@ -94,15 +173,38 @@ void addbranch(node* s, int depth)
     }
 }
 
-void buildtree()
+void buildtree(vector <point> s)
 {
     srand(int(time(0)));
     trie = new node(s);
-    //double maxdistance;
-    //int D = ceil(log(2 * maxdistance));
-    //double b = rand() / RAND_MAX / 2 + 0.5;
-    int D = 4;
-    double b = 0.5;
+    double maxdistance = Find_mostfar();
+    int D = ceil(log(2 * maxdistance) / log(2));
+    cout << D << endl;
+    double b = rand() / RAND_MAX / 2 + 0.5;
+    //double b = 0.5;
     addnode(trie, b, D - 1);
     addbranch(trie, D);
+}
+
+void scan(node* f)
+{
+    if (f == NULL) return;
+    for (int i = 0; i < f->size; i++) {
+        cout << f->v[i].getx() << " " << f->v[i].gety() << endl;
+    }
+    cout << endl;
+    for (int i = 0; i < f->son.size(); i++) {
+        scan(f->son[i]);
+    }
+}
+
+int main()
+{
+    s.push_back(point(1, 1));
+    s.push_back(point(2, 3));
+    s.push_back(point(5, 3));
+    s.push_back(point(4, 4));
+    buildtree(s);
+    scan(trie);
+    return 0;
 }
