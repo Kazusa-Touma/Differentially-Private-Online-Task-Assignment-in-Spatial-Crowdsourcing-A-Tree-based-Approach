@@ -1,0 +1,108 @@
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <cmath>
+#include <ctime>
+#include <map>
+using namespace std;
+int c;
+class point {
+private:
+    double x, y;
+    bool operator < (const point& p)const
+    {
+        if (x == p.x) return y < p.y;
+        return x < p.x;
+    }
+
+public:
+    point(double x, double y) {
+        this->x = x;
+        this->y = y;
+    }
+    double getx() { return x; }
+    double gety() { return y; }
+    double countdistance(point p) {
+        return sqrt((x - p.getx()) * (x - p.getx()) + (y - p.gety()) * (y - p.gety()));
+    }
+};
+vector <point> s;
+ 
+class node {
+public:
+    vector <point> v;
+    int size;
+    int level;
+    node* father;
+    vector <node*> son;
+
+    node(){
+        this->father = NULL;
+        this->size = 0;
+    }
+    node(vector <point> v) {
+        this->v.assign(v.begin(), v.end());
+        this->size = v.size();
+        this->father = NULL;
+    }
+}*trie;
+
+
+void addnode(node* f, double p, int depth)
+{
+    if (depth < 0) return;
+    double r = p * (double)(1 << depth);
+    int size = f->size, cnt, branch = 0;
+    cnt = size;
+    bool vis[10005] = { 0 };
+    for (int i = 0; i < size && cnt; i++) {
+        vector <point> v;
+        if (!vis[i]) {
+            v.push_back(f->v[i]);
+            vis[i] = true;
+            cnt--;
+        }
+        for (int j = i + 1; j < size; j++) {
+            if (!vis[j] && f->v[i].countdistance(f->v[j]) <= r) {
+                vis[j] = true;
+                v.push_back(f->v[j]);
+                cnt--;
+            }
+        }
+        node* tmp = new node(v);
+        tmp->father = f;
+        f->son.push_back(tmp);
+        branch++;
+        addnode(tmp, p, depth - 1);
+    }
+    c = max(c, branch);
+}
+
+void addbranch(node* s, int depth)
+{
+    if (depth == 0) return;
+    int size = s->son.size();
+    if (size < c) {
+        while (size++ < c) {
+            node* tmp = new node();
+            s->son.push_back(tmp);
+            tmp->father = s;
+        }
+    }
+    for (int i = 0; i < c; i++) {
+        addbranch(s->son[i], depth - 1);
+    }
+}
+
+void buildtree()
+{
+    srand(int(time(0)));
+    trie = new node(s);
+    //double maxdistance;
+    //int D = ceil(log(2 * maxdistance));
+    //double b = rand() / RAND_MAX / 2 + 0.5;
+    int D = 4;
+    double b = 0.5;
+    addnode(trie, b, D - 1);
+    addbranch(trie, D);
+}
