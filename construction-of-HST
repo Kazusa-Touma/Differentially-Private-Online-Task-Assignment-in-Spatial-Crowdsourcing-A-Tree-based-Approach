@@ -18,6 +18,10 @@ public:
         this->x = x;
         this->y = y;
     }
+    bool operator == (const point& p)const
+    {
+        return x == p.x && y == p.y;
+    }
     double getx() { return x; }
     double gety() { return y; }
     void setx(double x) { this->x = x; }
@@ -32,19 +36,25 @@ vector <point> s;
 class node {
 public:
     vector <point> v;
+    bool vis;
     int size;
     int level;
     node* father;
+    double probability;
     vector <node*> son;
 
     node(){
         this->father = NULL;
         this->size = 0;
+        vis = false;
+        probability = 0;
     }
     node(vector <point> v) {
         this->v.assign(v.begin(), v.end());
         this->size = v.size();
         this->father = NULL;
+        vis = false;
+        probability = 0;
     }
 }*trie;
 
@@ -159,6 +169,7 @@ void addnode(node* f, double p, int depth)
 
 void addbranch(node* s, int depth)
 {
+    s->level = depth;
     if (depth == 0) return;
     int size = s->son.size();
     if (size < c) {
@@ -179,22 +190,66 @@ void buildtree(vector <point> s)
     trie = new node(s);
     double maxdistance = Find_mostfar();
     int D = ceil(log(2 * maxdistance) / log(2));
-    cout << D << endl;
+    //cout << D << endl;
     double b = rand() / RAND_MAX / 2 + 0.5;
     //double b = 0.5;
     addnode(trie, b, D - 1);
     addbranch(trie, D);
 }
 
-void scan(node* f)
+void scan(node* f, double WT, int i)
 {
-    if (f == NULL) return;
-    for (int i = 0; i < f->size; i++) {
-        cout << f->v[i].getx() << " " << f->v[i].gety() << endl;
+    if (f->vis) return;
+    if (f->level == 0) {
+        //cout << pow(c, i - 1) * (c - 1) * exp((4 - pow(2, i + 2)) * 0.1) << " " << i << endl;
+        f->probability = (pow(c, i - 1) * (c - 1) * exp((4 - pow(2, i + 2)) * 0.1)) / WT / pow(2, i - 1);
+        return;
     }
-    cout << endl;
+    f->vis = true;
+    for (int j = 0; j < f->son.size(); j++) {
+        if (f->son[j]->vis) continue;
+        scan(f->son[j], WT, i);
+    }
+}
+
+void init(double budget, point p)
+{
+    node* head = trie;
+    while (head->level > 0) {
+        for (int i = 0; i < head->son.size(); i++) {
+            node* tmp = head->son[i];
+            for (int j = 0; j < tmp->size; j++) {
+                if (tmp->v[j] == p) {
+                    head = tmp;
+                    break;
+                }
+            }
+            if (head == tmp) {
+                break;
+            }
+        }
+    }
+    double WT = 1;
+    for (int i = 1; i <= trie->level; i++) {
+        WT += pow(c, i - 1) * (c - 1) * exp(budget * (4 - pow(2, i + 2)));
+    }
+    head->probability = 1 / WT;
+    head->vis = true;
+    for (int i = 1; i <= trie->level; i++) {
+        head = head->father;
+        //cout << i << " " << trie->level << endl;
+        scan(head, WT, i);
+    }
+}
+
+void test(node *f)
+{
+    if (f->level == 0) {
+        cout << f->probability << endl;
+        return;
+    }
     for (int i = 0; i < f->son.size(); i++) {
-        scan(f->son[i]);
+        test(f->son[i]);
     }
 }
 
@@ -205,6 +260,8 @@ int main()
     s.push_back(point(5, 3));
     s.push_back(point(4, 4));
     buildtree(s);
-    scan(trie);
+    point p = point(1, 1);
+    init(0.1, p);
+    test(trie);
     return 0;
 }
