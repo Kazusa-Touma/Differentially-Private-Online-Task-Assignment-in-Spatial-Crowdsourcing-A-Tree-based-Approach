@@ -1,0 +1,10 @@
+release/hstnode.o
+release/initialization.o
+release/main.o
+release/mainwindow.o
+release/matching.o
+release/obfuscated_node.o
+release/obfuscation.o
+release/point.o
+release/qrc_qmake_qmake_qm_files.o
+release/moc_mainwindow.o

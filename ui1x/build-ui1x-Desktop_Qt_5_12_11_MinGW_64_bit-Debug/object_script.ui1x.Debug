@@ -1,0 +1,10 @@
+debug/hstnode.o
+debug/initialization.o
+debug/main.o
+debug/mainwindow.o
+debug/matching.o
+debug/obfuscated_node.o
+debug/obfuscation.o
+debug/point.o
+debug/qrc_qmake_qmake_qm_files.o
+debug/moc_mainwindow.o
